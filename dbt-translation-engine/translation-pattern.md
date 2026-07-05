@@ -67,7 +67,7 @@ FROM {{ migration_relation('finance', 'payments') }}
 ## SQL Dialect Translation Examples
 
 The full deterministic rule matrix lives with the notebook prototype:
-[dbt_translation_engine/README.md](dbt_translation_engine/README.md).
+[translation-rules.md](translation-rules.md).
 
 | Redshift pattern | Trino/Iceberg pattern |
 | --- | --- |

@@ -85,11 +85,11 @@ case-insensitive regular expressions.
 The notebook should eventually become a small, public-safe script:
 
 ```text
-dbt_translation_engine/
-  README.md
+dbt-translation-engine/
+  translation-rules.md
   dbt_jinja_processor.py
   redshift_to_trino_rules.yml
-  examples/
+  fixtures/
     before.sql
     after.sql
 ```

@@ -1,4 +1,4 @@
-# Shift-Left Controls
+# GitLab Transition Branch Controls
 
 Shift-left means moving migration risk earlier in the workflow. Instead of
 waiting for production users to find broken queries, the migration process
@@ -19,8 +19,8 @@ flowchart LR
     H --> I[Publish readiness status]
     I --> J[Cutover decision]
 
-    B -. scheduled refresh .-> K[Main branch]
-    K -. conflict found .-> L[Slack or MR notification]
+    K[Main branch] -. scheduled rebase .-> B
+    B -. conflict found .-> L[Slack or MR notification]
 ```
 
 ## Branch Controls
@@ -36,10 +36,11 @@ Useful checks:
 - explicit `merge` or `rebase` strategy depending on team policy,
 - protected variables for Git credentials and notification webhooks.
 
-Example files:
+Component files:
 
-- [../examples/transition_branch_refresh.py](../examples/transition_branch_refresh.py)
-- [../examples/gitlab-ci.transition-branch-refresh.yml](../examples/gitlab-ci.transition-branch-refresh.yml)
+- [transition-branch-refresh.py](transition-branch-refresh.py)
+- [gitlab-ci.transition-branch-refresh.yml](gitlab-ci.transition-branch-refresh.yml)
+- [migration-readiness-gate.sql](migration-readiness-gate.sql)
 
 ## Translation Controls
 
