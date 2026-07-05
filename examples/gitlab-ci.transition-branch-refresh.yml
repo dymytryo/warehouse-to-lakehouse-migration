@@ -1,0 +1,28 @@
+# Portfolio example: scheduled transition branch refresh.
+#
+# Configure in GitLab UI:
+#   Description: Refresh lakehouse transition branch
+#   Cron:        0 5 * * *
+#   Target:      main
+#   Variables:
+#     RUN_TRANSITION_BRANCH_REFRESH = true
+#     TRANSITION_BRANCH = lakehouse-transition
+#     TARGET_BRANCH = main
+#     UPDATE_STRATEGY = rebase
+
+stages:
+  - maintenance
+
+refresh-transition-branch:
+  stage: maintenance
+  image: python:3.11-slim
+  before_script:
+    - apt-get update && apt-get install -y git
+    - pip install requests
+  script:
+    - python examples/transition_branch_refresh.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" && $RUN_TRANSITION_BRANCH_REFRESH == "true"'
+  variables:
+    GIT_DEPTH: "0"
+  allow_failure: false

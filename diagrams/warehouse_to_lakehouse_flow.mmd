@@ -1,0 +1,17 @@
+flowchart LR
+    A[Redshift warehouse] --> B[Source object inventory]
+    B --> C[Migration mapping]
+    C --> D[dbt translation layer]
+    D --> E[GitLab transition branch]
+    E --> F[CI validation gates]
+    F --> G[dbt build on Trino]
+    G --> H[Apache Iceberg tables]
+    H --> I[Trino / Starburst]
+    I --> J[BI, analytics, AI, and jobs]
+
+    F --> K[Schema parity]
+    F --> L[Row-count parity]
+    F --> M[Metric parity]
+    K --> N[Cutover readiness]
+    L --> N
+    M --> N
