@@ -9,11 +9,6 @@
 #     TRANSITION_BRANCH = lakehouse-transition
 #     TARGET_BRANCH = main
 #     UPDATE_STRATEGY = rebase
-#
-# Companion SQL gate:
-#   gitlab-transition-branch/migration-readiness-gate.sql
-# Run it with the team's Trino SQL runner after dbt build and parity metadata
-# refresh. The expected result set is zero rows.
 
 stages:
   - maintenance
@@ -25,10 +20,9 @@ refresh-transition-branch:
     - apt-get update && apt-get install -y git
     - pip install requests
   script:
-    - python gitlab-transition-branch/transition-branch-refresh.py
+    - python examples/transition_branch_refresh.py
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $RUN_TRANSITION_BRANCH_REFRESH == "true"'
   variables:
     GIT_DEPTH: "0"
-    MIGRATION_READINESS_SQL: gitlab-transition-branch/migration-readiness-gate.sql
   allow_failure: false

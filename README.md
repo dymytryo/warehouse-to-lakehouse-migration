@@ -16,12 +16,12 @@ The migration system had four parts:
 3. GitLab branch and CI controls that caught migration problems before merge.
 4. Automated parity checks that proved readiness before cutover.
 
-Implementation files are anonymized and kept as readable migration patterns
-rather than packaged software.
+All examples are anonymized and intentionally kept as readable implementation
+patterns instead of an installable package.
 
 ## Target Architecture
 
-![Warehouse to lakehouse cutover architecture](technical-architecture/warehouse-lakehouse-architecture.png)
+![Warehouse to lakehouse cutover architecture](assets/warehouse-lakehouse-architecture.png)
 
 ```mermaid
 flowchart TB
@@ -75,7 +75,7 @@ The migration tracker created a single source of truth for object progress. It
 joined the source warehouse/dbt inventory to the target Iceberg catalog and
 classified each object as migrated or not migrated.
 
-![Migration progress dashboard](tableau-tracker/migration-progress-dashboard.png)
+![Migration progress dashboard](assets/migration-progress-dashboard.png)
 
 The tracker supported progress by schema or folder, object-level cutover status,
 dashboard counts, high-usage object prioritization, and exception handling for
@@ -89,7 +89,7 @@ CASE
 END AS migration_status
 ```
 
-Full example: [tableau-tracker/migration-tracker.sql](tableau-tracker/migration-tracker.sql)
+Full example: [examples/migration_tracker.sql](examples/migration_tracker.sql)
 
 ## dbt Translation Layer
 
@@ -130,9 +130,9 @@ patterns, and parsed the rendered SQL before build.
 
 Examples:
 
-- [dbt-translation-engine/translation-pattern.md](dbt-translation-engine/translation-pattern.md)
-- [dbt-translation-engine/translation-rules.md](dbt-translation-engine/translation-rules.md)
-- [dbt-translation-engine/dbt-jinja-processor.ipynb](dbt-translation-engine/dbt-jinja-processor.ipynb)
+- [examples/dbt_sql_translation.md](examples/dbt_sql_translation.md)
+- [examples/dbt_translation_engine/README.md](examples/dbt_translation_engine/README.md)
+- [examples/dbt_translation_engine/dbtJINJAProcessor.ipynb](examples/dbt_translation_engine/dbtJINJAProcessor.ipynb)
 
 ## GitLab Transition Branch Strategy
 
@@ -158,10 +158,9 @@ cutover.
 
 Examples:
 
-- [gitlab-transition-branch/branch-controls.md](gitlab-transition-branch/branch-controls.md)
-- [gitlab-transition-branch/transition-branch-refresh.py](gitlab-transition-branch/transition-branch-refresh.py)
-- [gitlab-transition-branch/gitlab-ci.transition-branch-refresh.yml](gitlab-transition-branch/gitlab-ci.transition-branch-refresh.yml)
-- [gitlab-transition-branch/migration-readiness-gate.sql](gitlab-transition-branch/migration-readiness-gate.sql)
+- [docs/shift-left-controls.md](docs/shift-left-controls.md)
+- [examples/transition_branch_refresh.py](examples/transition_branch_refresh.py)
+- [examples/gitlab-ci.transition-branch-refresh.yml](examples/gitlab-ci.transition-branch-refresh.yml)
 
 ## Parity Validation
 
@@ -192,4 +191,55 @@ def normalize_dtype(dtype: str | None) -> str | None:
     return value
 ```
 
-Full example: [parity-validation/parity-validation.py](parity-validation/parity-validation.py)
+Full example: [examples/parity_validation.py](examples/parity_validation.py)
+
+## Cutover Signals
+
+The migration was treated as complete only when the target platform was usable
+and stable for downstream consumers.
+
+![Active users by month dashboard](assets/adoption-active-users.png)
+
+Runtime behavior was also tracked after cutover. This helped separate data
+correctness from operational readiness.
+
+![Average job duration before and after cutover](assets/job-duration-post-cutover.png)
+
+## Operational Follow-Through
+
+After objects landed in Iceberg, the platform still needed maintenance and
+observability:
+
+- collect table statistics for Trino planning,
+- monitor query usage and table access,
+- identify stale or unused objects,
+- run Iceberg maintenance such as snapshot expiration and file compaction,
+- validate runtime behavior through Airflow/MWAA jobs.
+
+This turns the migration from a one-time movement of data into a durable
+lakehouse operating model.
+
+## Repository Structure
+
+```text
+README.md
+assets/
+  adoption-active-users.png
+  job-duration-post-cutover.png
+  migration-progress-dashboard.png
+  warehouse-lakehouse-architecture.png
+docs/
+  shift-left-controls.md
+diagrams/
+  warehouse_to_lakehouse_flow.mmd
+  gitlab_shift_left_flow.mmd
+examples/
+  dbt_sql_translation.md
+  dbt_translation_engine/
+    README.md
+    dbtJINJAProcessor.ipynb
+  gitlab-ci.transition-branch-refresh.yml
+  migration_tracker.sql
+  parity_validation.py
+  transition_branch_refresh.py
+```
