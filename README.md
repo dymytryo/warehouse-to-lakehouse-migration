@@ -39,6 +39,28 @@ flowchart LR
     J --> K[Cutover readiness dashboard]
 ```
 
+## Visual Walkthrough
+
+The screenshots below are anonymized portfolio visuals. They show how the
+migration story can be reviewed from architecture, execution tracking, adoption,
+and runtime-performance angles.
+
+### Cutover architecture
+
+![Warehouse to lakehouse cutover architecture](assets/warehouse-lakehouse-architecture.png)
+
+### Migration control plane
+
+![Migration progress dashboard](assets/migration-progress-dashboard.png)
+
+### Adoption signal
+
+![Active users by month dashboard](assets/adoption-active-users.png)
+
+### Runtime impact
+
+![Average job duration before and after cutover](assets/job-duration-post-cutover.png)
+
 ## What This Project Showcases
 
 | Area | What is represented |
@@ -55,6 +77,11 @@ flowchart LR
 
 ```text
 README.md
+assets/
+  adoption-active-users.png
+  job-duration-post-cutover.png
+  migration-progress-dashboard.png
+  warehouse-lakehouse-architecture.png
 docs/
   technical-deep-dive.md
   shift-left-controls.md
