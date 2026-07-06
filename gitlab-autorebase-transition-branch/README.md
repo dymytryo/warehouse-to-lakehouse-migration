@@ -11,9 +11,6 @@ fresh, tested, and conflict-visible before cutover.
   branch refresh script with merge or rebase mode and conflict notification.
 - [gitlab-ci.transition-branch-refresh.yml](gitlab-ci.transition-branch-refresh.yml)
   - GitLab scheduled pipeline job that runs the refresh.
-- [shift-left-controls.md](shift-left-controls.md) - control flow for branch
-  freshness, SQL rendering/parsing, config validation, dependency checks, and
-  readiness gates.
 - [gitlab_shift_left_flow.mmd](gitlab_shift_left_flow.mmd) - Mermaid source for
   the shift-left control flow.
 
