@@ -78,8 +78,20 @@ The dbt migration was not just a connection-profile change. Redshift-specific
 model config, SQL syntax, source routing, and incremental behavior had to be
 made compatible with Trino/Iceberg.
 
-🔗 [dbt_jinja_processor.py](translation-engine/dbt_jinja_processor.py)  
-🔗 [redshift-to-trino-function-mapping.md](translation-engine/redshift-to-trino-function-mapping.md)
+### Processor
+
+🔗 [dbt_jinja_processor.py](translation-engine/dbt_jinja_processor.py)
+
+The processor handles the model-file cleanup work:
+
+- removes Redshift-only dbt config such as `dist`, `sort`, `distkey`, and
+  `sortkey`,
+- preserves dbt/Jinja constructs such as `ref`, `source`, `var`, and
+  `dbt_utils`,
+- removes incremental-only SQL blocks when a migrated object is intentionally
+  rebuilt as a view,
+- keeps the model reviewable so the translated SQL can be compiled and checked
+  against Trino before cutover.
 
 ### Config Cleanup
 
@@ -112,6 +124,22 @@ made compatible with Trino/Iceberg.
 
 The cleanup keeps logical dbt behavior and removes Redshift physical layout
 settings that do not apply to Iceberg tables.
+
+### Deterministic Function Translation
+
+Function and syntax translations were handled deterministically. A few common
+rewrites:
+
+| Redshift | Trino |
+| --- | --- |
+| `GETDATE()` | `CURRENT_TIMESTAMP` |
+| `NVL(a, b)` | `COALESCE(a, b)` |
+| `DATEADD(day, x, y)` | `DATE_ADD('day', x, y)` |
+| `x::BIGINT` | `CAST(x AS BIGINT)` |
+| `LEN(str)` | `LENGTH(str)` |
+
+🔗 Full mapping:
+[redshift-to-trino-function-mapping.md](translation-engine/redshift-to-trino-function-mapping.md)
 
 ### Source Routing
 
