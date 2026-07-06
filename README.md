@@ -172,18 +172,6 @@ FROM {{ migration_relation('finance', 'payments') }}
 The migration used a long-running transition branch so production work could
 continue on `main` while Trino/Iceberg changes were translated and validated.
 
-🔗 [transition_branch_refresh.py](gitlab-autorebase-transition-branch/transition_branch_refresh.py)  
-Runs the branch refresh. It checks for a clean CI worktree, configures the
-automation git identity, fetches remote branches, resets the transition branch
-to its remote state, then rebases or merges it onto `main`. If the refresh
-conflicts, it collects the conflicting file list and sends a Slack notification
-through `SLACK_WEBHOOK_URL`.
-
-🔗 [gitlab-ci.transition-branch-refresh.yml](gitlab-autorebase-transition-branch/gitlab-ci.transition-branch-refresh.yml)  
-Configures the scheduled GitLab job. It runs in a Python image, installs `git`
-and `requests`, keeps full git history with `GIT_DEPTH: "0"`, and only runs for
-scheduled pipelines where `RUN_TRANSITION_BRANCH_REFRESH=true`.
-
 ```mermaid
 flowchart LR
     A[Main branch] --> B[Scheduled refresh]
@@ -195,3 +183,15 @@ flowchart LR
     B -->|conflict| G[Notify owner]
     E -->|validation gap| H[Block cutover]
 ```
+
+🔗 [transition_branch_refresh.py](gitlab-autorebase-transition-branch/transition_branch_refresh.py)  
+Runs the branch refresh. It checks for a clean CI worktree, configures the
+automation git identity, fetches remote branches, resets the transition branch
+to its remote state, then rebases or merges it onto `main`. If the refresh
+conflicts, it collects the conflicting file list and sends a Slack notification
+through `SLACK_WEBHOOK_URL`.
+
+🔗 [gitlab-ci.transition-branch-refresh.yml](gitlab-autorebase-transition-branch/gitlab-ci.transition-branch-refresh.yml)  
+Configures the scheduled GitLab job. It runs in a Python image, installs `git`
+and `requests`, keeps full git history with `GIT_DEPTH: "0"`, and only runs for
+scheduled pipelines where `RUN_TRANSITION_BRANCH_REFRESH=true`.
