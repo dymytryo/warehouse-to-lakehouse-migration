@@ -1,20 +1,87 @@
-# dbt Translation Engine Prototype
+# dbt Translation Engine
 
-This folder holds the notebook prototype for deterministic dbt/Jinja cleanup and
-Redshift-to-Trino syntax translation during a warehouse-to-lakehouse migration.
+This folder shows the dbt/Jinja cleanup and Redshift-to-Trino translation layer
+used during the warehouse-to-lakehouse migration.
 
-The notebook is intentionally preserved as the exploratory artifact. The table
-below captures the rule matrix that should eventually be extracted into a
-cleaner script or YAML-driven translation layer.
+The goal is not blind string replacement. The safer pattern is:
+
+1. Preserve `ref`, `source`, `var`, `dbt_utils`, and known project macros while
+   cleaning the parts that are warehouse-specific.
+2. Remove Redshift-only dbt config such as `dist`, `sort`, `distkey`, and
+   `sortkey`.
+3. Add or standardize target config where needed, such as converting selected
+   models to Trino/Iceberg views.
+4. Remove incremental-only SQL when the target object is intentionally rebuilt
+   as a view.
+5. Apply known Redshift-to-Trino SQL rewrites.
+6. Parse and compile the result against the Trino target before cutover.
 
 ## Files
 
-- [dbt_sql_translation.md](dbt_sql_translation.md) - implementation pattern for
-  dbt config cleanup, source routing, SQL translation, and CI validation.
-- [dbt_jinja_processor.ipynb](dbt_jinja_processor.ipynb) - exploratory notebook
-  prototype for deterministic dbt/Jinja cleanup.
+- [dbt_jinja_processor.py](dbt_jinja_processor.py) - dependency-free script for
+  dbt config cleanup and Jinja-preserving model rewrites.
 
-## What the Processor Was Trying To Do
+## Redshift-Specific Config Cleanup
+
+Redshift models often contain physical layout config that does not apply to
+Trino/Iceberg.
+
+```jinja
+{{ config(
+    materialized='incremental',
+    unique_key='payment_id',
+    dist='company_id',
+    sort=['created_at']
+) }}
+```
+
+For Trino/Iceberg, the migrated model should keep logical behavior and remove
+warehouse-specific physical layout keys:
+
+```jinja
+{{ config(
+    materialized='incremental',
+    unique_key='payment_id'
+) }}
+```
+
+When a model is intentionally converted to a view, the script can also add or
+replace materialization config:
+
+```bash
+python translation-engine/dbt_jinja_processor.py path/to/dbt_project/models \
+  --materialized view
+```
+
+Use `--dry-run` to validate processing without writing files.
+
+## Migration-Aware Source Routing
+
+During transition, some objects may still read from the warehouse while others
+read from the lakehouse. A small template abstraction makes that explicit.
+
+```jinja
+{% macro migration_relation(schema_name, table_name) %}
+    {% if var('lakehouse_enabled', false) %}
+        {{ return(source('lakehouse', schema_name ~ '__' ~ table_name)) }}
+    {% else %}
+        {{ return(source('warehouse', schema_name ~ '__' ~ table_name)) }}
+    {% endif %}
+{% endmacro %}
+```
+
+Then models use the migration-aware relation:
+
+```sql
+SELECT
+    payment_id,
+    company_id,
+    amount,
+    created_at
+FROM {{ migration_relation('finance', 'payments') }}
+```
+
+## What the Processor Does
 
 - Preserve dbt/Jinja constructs like `ref`, `source`, `var`, and `dbt_utils`
   while cleaning unsupported model configuration.
@@ -87,18 +154,23 @@ case-insensitive regular expressions.
 | `QUALIFY` | `ROW_NUMBER()` plus subquery | Replace `QUALIFY` with a nested query that filters on the window-function result. |
 | `WITH RECURSIVE` | Manual rewrite | Replace recursion with an iterative staging model, seed table, date spine, or bounded expansion pattern. |
 
-## Next Refactor
+## CI Validation Shape
 
-The notebook should eventually become a small, public-safe script:
+The translation layer should fail fast when a migrated model is invalid:
 
 ```text
-translation-engine/
-  README.md
-  dbt_jinja_processor.py
-  redshift_to_trino_rules.yml
-  before.sql
-  after.sql
+changed dbt model
+  -> clean dbt config
+  -> preserve dbt/Jinja safely
+  -> apply deterministic SQL rewrites
+  -> parse SQL AST using Trino dialect
+  -> compile/build against Trino target
+  -> run readiness checks
 ```
 
-That would make the deterministic translation story easier to inspect without
-requiring someone to open a notebook.
+## Why This Matters
+
+The migration becomes repeatable because developers are not manually guessing
+which Redshift patterns are safe in Trino. The template layer captures known
+platform differences, and CI proves that translated models still compile, parse,
+and match source data before cutover.

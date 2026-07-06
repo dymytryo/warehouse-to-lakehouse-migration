@@ -41,7 +41,7 @@ The migration system had four parts:
 
 | Area | What it contains |
 | --- | --- |
-| [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup pattern, and notebook prototype |
+| [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup pattern, and standalone processor script |
 | [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/) | Scheduled transition-branch refresh, GitLab CI job, and shift-left flow |
 | [tableau-migration-tracker](tableau-migration-tracker/) | Migration tracker screenshot and dbt SQL model for object status |
 | [lakehouse-architecture](lakehouse-architecture/) | Mermaid architecture flow for the warehouse-to-lakehouse migration |
