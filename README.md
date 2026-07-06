@@ -1,12 +1,9 @@
 # Warehouse-to-Lakehouse Migration Technical Deep Dive
 
-This is a portfolio-style technical companion for a large Redshift to
+This repository documents the technical mechanics behind a large Redshift to
 Trino/Starburst and Apache Iceberg migration. The slide deck tells the executive
-story; this repository shows the delivery mechanics behind it.
-
-This is not an installable library. The files are anonymized, public-safe
-patterns that show how a production-scale data platform migration was organized,
-validated, and cut over.
+story; this repository shows how the migration was organized, validated, and
+cut over.
 
 ## Executive Summary
 
@@ -41,11 +38,10 @@ The migration system had four parts:
 
 | Area | What it contains |
 | --- | --- |
-| [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup pattern, and standalone processor script |
+| [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup process, and standalone processor script |
 | [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/) | Scheduled transition-branch refresh, GitLab CI job, and shift-left flow |
 | [tableau-migration-tracker](tableau-migration-tracker/) | Migration tracker screenshot and dbt SQL model for object status |
 | [lakehouse-architecture](lakehouse-architecture/) | Mermaid architecture flow for the warehouse-to-lakehouse migration |
-| [presentation-addendum.md](presentation-addendum.md) | Optional appendix notes for extending the slide deck |
 
 ## Target Architecture
 
@@ -168,8 +164,7 @@ source and target objects before downstream consumers moved:
 - missing-column risk based on non-null values,
 - known-system-column exclusions.
 
-The local focus of this repository is the tracker and migration factory. The
-standalone parity validation script was moved out to the Iceberg notes repo.
+The readiness results fed the migration tracker and cutover decision process.
 
 ## Operational Follow-Through
 

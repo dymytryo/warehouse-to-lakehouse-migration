@@ -4,11 +4,8 @@
 ) }}
 
 /*
-Portfolio example: migration object tracker.
-
 This model compares the source warehouse/dbt inventory against the target
 Iceberg catalog so a migration dashboard can show object-level progress.
-Replace the source CTEs with the metadata tables available in your environment.
 */
 
 WITH source_models AS (

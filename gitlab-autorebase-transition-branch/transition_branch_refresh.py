@@ -1,9 +1,9 @@
 """
-Portfolio example: refresh a long-running lakehouse transition branch.
+Refresh a long-running lakehouse transition branch.
 
 The script can either rebase or merge the transition branch onto the latest
-target branch. In a migration program this runs on a GitLab schedule so branch
-drift and conflicts are discovered before a large cutover window.
+target branch. It runs on a GitLab schedule so branch drift and conflicts are
+discovered before a cutover window.
 """
 
 from __future__ import annotations
@@ -45,7 +45,7 @@ def ensure_clean_worktree() -> None:
 
 def configure_git_identity() -> None:
     git_user_name = os.getenv("GIT_USER_NAME", "migration-automation")
-    git_user_email = os.getenv("GIT_USER_EMAIL", "migration-automation@example.com")
+    git_user_email = os.getenv("GIT_USER_EMAIL", "migration-automation@localhost")
     run(["git", "config", "user.name", git_user_name])
     run(["git", "config", "user.email", git_user_email])
 

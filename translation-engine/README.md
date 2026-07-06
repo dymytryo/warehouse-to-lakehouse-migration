@@ -136,7 +136,7 @@ case-insensitive regular expressions.
 | `REPEAT('x', n)` | `'xxxxxxxxxxxxxxx'` | In environments where repeat is unavailable, materialize the repeated literal. |
 | `TRY_NUMERIC(x)` | `TRY(CAST(x AS REAL))` |  |
 | `CHARACTER VARYING(x)` | `VARCHAR` |  |
-| `'YYYY-MM-DD''T''HH:MM:SS''Z'''` | `'YYYY-MM-DD HH:MM:SS'` | ISO timestamps use `T` between date and time. `Z` means UTC. Offsets can also be represented, for example `2024-07-04T13:46:08+02:00`. |
+| `'YYYY-MM-DD''T''HH:MM:SS''Z'''` | `'YYYY-MM-DD HH:MM:SS'` | ISO timestamps use `T` between date and time. `Z` means UTC. Offsets can also be represented as `2024-07-04T13:46:08+02:00`. |
 | `IS_VALID_JSON(json_str)` | `TRY(JSON_PARSE(json_str)) IS NOT NULL` | Use `TRY(JSON_EXTRACT(json_str, '$.path'))` when validating a specific path. |
 | `RIGHT(x, n)` | `SUBSTRING(x, -n)` |  |
 | `SHA2(x, bits)` | `sha256(to_utf8(x))` | `sha256()` expects `varbinary` input. |

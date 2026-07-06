@@ -3,8 +3,7 @@
 Clean dbt model files for a Redshift-to-Trino migration.
 
 The script removes Redshift-only dbt config keys while preserving the rest of a
-model's SQL and Jinja. It intentionally uses only the Python standard library so
-the example is easy to inspect and run.
+model's SQL and Jinja. It intentionally uses only the Python standard library.
 """
 
 from __future__ import annotations
@@ -183,7 +182,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--materialized",
-        help="Set or add replacement materialization, for example 'view'.",
+        help="Set or add replacement materialization, such as 'view'.",
     )
     parser.add_argument(
         "--keep-incremental-blocks",

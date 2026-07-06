@@ -1,5 +1,3 @@
-# Portfolio example: scheduled transition branch refresh.
-#
 # Configure in GitLab UI:
 #   Description: Refresh lakehouse transition branch
 #   Cron:        0 5 * * *
