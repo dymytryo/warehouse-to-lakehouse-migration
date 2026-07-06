@@ -38,8 +38,8 @@ Useful checks:
 
 Example files:
 
-- [../examples/transition_branch_refresh.py](../examples/transition_branch_refresh.py)
-- [../examples/gitlab-ci.transition-branch-refresh.yml](../examples/gitlab-ci.transition-branch-refresh.yml)
+- [transition_branch_refresh.py](transition_branch_refresh.py)
+- [gitlab-ci.transition-branch-refresh.yml](gitlab-ci.transition-branch-refresh.yml)
 
 ## Translation Controls
 

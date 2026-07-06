@@ -1,131 +1,186 @@
-# Redshift to Trino + Iceberg Lakehouse Migration
+# Warehouse-to-Lakehouse Migration Technical Deep Dive
 
-This is a portfolio-style technical case study for a large warehouse-to-lakehouse
-migration. It consolidates the migration story, shift-left controls, GitLab
-branch workflow, dbt SQL translation patterns, and parity validation logic into
-one public-safe project.
+This is a portfolio-style technical companion for a large Redshift to
+Trino/Starburst and Apache Iceberg migration. The slide deck tells the executive
+story; this repository shows the delivery mechanics behind it.
 
-This is not an installable library. The files here are documentation and
-anonymized examples that show how I think through a production-scale data
-platform migration.
+This is not an installable library. The files are anonymized, public-safe
+patterns that show how a production-scale data platform migration was organized,
+validated, and cut over.
+
+## Executive Summary
+
+The migration moved a 200+ TB Redshift warehouse into an Apache Iceberg
+lakehouse queried through Trino/Starburst. The hard part was not only moving
+data. The hard part was keeping thousands of modeled objects, downstream
+dependencies, and business metrics stable while the platform changed underneath
+them.
+
+The migration system had four parts:
+
+1. A control plane that tracked which objects had moved.
+2. A dbt translation layer that converted Redshift-oriented code to
+   Trino/Iceberg-compatible code.
+3. GitLab branch and CI controls that caught migration problems before merge.
+4. Cutover readiness checks that proved source and target objects were safe to
+   swap before consumers moved.
 
 ## Impact
 
 - Migrated a 200+ TB Redshift warehouse to a Trino/Starburst query layer backed
   by Apache Iceberg tables.
-- Replatformed 2K+ dbt-modeled objects while preserving object-level parity.
-- Built automated schema, row-count, and metric parity checks before consumer
-  cutover.
-- Used a shift-left workflow so translation, freshness, dependency, and parity
-  issues were caught in GitLab before production users depended on the new
+- Replatformed 2,000+ dbt-modeled objects while preserving object-level parity.
+- Used a hot-swap cutover so existing BI, analytics, and downstream jobs did not
+  need repeated repointing.
+- Built shift-left controls so translation, branch freshness, dependency, and
+  readiness issues were caught before production users depended on the new
   lakehouse objects.
-- Reduced platform cost by roughly 60% while keeping existing BI and analytics
-  workflows stable.
+- Reduced platform cost by roughly 60% while keeping existing workflows stable.
 
-## Migration Architecture
+## Repository Map
+
+| Area | What it contains |
+| --- | --- |
+| [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup pattern, and notebook prototype |
+| [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/) | Scheduled transition-branch refresh, GitLab CI job, and shift-left flow |
+| [tableau-migration-tracker](tableau-migration-tracker/) | Migration tracker screenshot and dbt SQL model for object status |
+| [lakehouse-architecture](lakehouse-architecture/) | Mermaid architecture flow for the warehouse-to-lakehouse migration |
+| [presentation-addendum.md](presentation-addendum.md) | Optional appendix notes for extending the slide deck |
+
+## Target Architecture
 
 ```mermaid
-flowchart LR
-    A[Redshift warehouse] --> B[Object inventory and migration tracker]
-    B --> C[dbt translation layer]
-    C --> D[Transition branch]
-    D --> E[GitLab CI controls]
-    E --> F[dbt build on Trino]
-    F --> G[Apache Iceberg tables on object storage]
-    G --> H[Trino / Starburst query layer]
-    H --> I[BI, analytics, AI, and downstream jobs]
+flowchart TB
+    subgraph Source["Source warehouse"]
+        RS[Redshift schemas and dbt models]
+        RSQ[Historical query patterns]
+    end
 
-    E --> J[Schema, row-count, and metric parity]
-    J --> K[Cutover readiness dashboard]
+    subgraph Migration["Migration control plane"]
+        INV[Object inventory]
+        MAP[Schema and table mapping]
+        TRANS[dbt SQL translation]
+        BRANCH[Transition branch]
+        CI[GitLab CI quality gates]
+        READY[Cutover readiness]
+    end
+
+    subgraph Lakehouse["Target lakehouse"]
+        S3[Object storage]
+        ICE[Apache Iceberg tables]
+        CAT[Catalog / metadata]
+        TRINO[Trino / Starburst]
+    end
+
+    subgraph Consumers["Consumers"]
+        BI[BI dashboards]
+        JOBS[Batch jobs]
+        AI[AI and semantic access]
+    end
+
+    RS --> INV
+    RSQ --> INV
+    INV --> MAP
+    MAP --> TRANS
+    TRANS --> BRANCH
+    BRANCH --> CI
+    CI --> ICE
+    S3 --> ICE
+    CAT --> ICE
+    ICE --> TRINO
+    TRINO --> BI
+    TRINO --> JOBS
+    TRINO --> AI
+    CI --> READY
+    READY --> TRINO
 ```
 
-## What This Project Showcases
+## Migration Control Plane
 
-| Area | What is represented |
+The migration tracker created a single source of truth for object progress. It
+joined the source warehouse/dbt inventory to the target Iceberg catalog and
+classified each object as migrated, required but not migrated, or intentionally
+held.
+
+The tracker supported:
+
+- progress by schema or folder,
+- object-level cutover status,
+- counts for dashboarding,
+- prioritization of high-usage objects,
+- exception handling for intentionally retired or on-hold objects.
+
+See [tableau-migration-tracker](tableau-migration-tracker/).
+
+## dbt Translation Layer
+
+The code migration required more than changing the connection profile from
+Redshift to Trino. A safer translation layer handled predictable differences:
+
+| Redshift-oriented pattern | Trino/Iceberg migration concern |
 | --- | --- |
-| Lakehouse architecture | Redshift to Trino/Starburst over Iceberg and object storage |
-| Migration control plane | Object inventory, status tracking, folder/schema progress, cutover readiness |
-| dbt translation | Custom template patterns for Redshift-to-Trino SQL and config migration |
-| GitLab workflow | Long-lived transition branch refresh, branch freshness checks, scheduled jobs |
-| Shift-left quality | Compile, parse, dependency, config, ownership, and parity checks before merge |
-| Data validation | Schema parity, row-count parity, type normalization, metric comparison |
-| Operations | Iceberg maintenance, table statistics, query usage, and runtime observability |
+| `dist`, `sort`, `distribution` configs | Not valid or not useful for Trino/Iceberg |
+| Redshift date functions | Function signatures differ in Trino |
+| `::type` casts | Prefer explicit `CAST(expr AS type)` |
+| warehouse-specific schemas | Need migration-aware source routing |
+| table rebuild assumptions | Iceberg has snapshot and maintenance behavior |
+| incremental model strategy | Adapter-specific merge/delete behavior differs |
 
-## Repository Structure
+The translation layer was built around dbt/Jinja rendering, config governance,
+and SQL parsing:
 
-```text
-migration/
-  README.md
-  docs/
-    technical-deep-dive.md
-    shift-left-controls.md
-    presentation-addendum.md
-  diagrams/
-    warehouse_to_lakehouse_flow.mmd
-    gitlab_shift_left_flow.mmd
-  examples/
-    dbt_sql_translation.md
-    gitlab-ci.transition-branch-refresh.yml
-    migration_tracker.sql
-    parity_validation.py
-    transition_branch_refresh.py
-```
+- extract dbt `config(...)` keys and block unsupported Redshift-only config,
+- render dbt models before parsing,
+- parse generated SQL to catch translation failures,
+- route source references through a migration mapping,
+- standardize function and cast translation with explicit macros.
 
-## Technical Components
+See [translation-engine](translation-engine/).
 
-### 1. Migration tracker
+## GitLab Transition Branch Strategy
 
-The migration tracker compares the known Redshift/dbt object inventory against
-the Iceberg/Trino catalog and produces a migration status table.
+The migration used a long-running transition branch to isolate platform changes
+without freezing normal development. `main` continued to receive production
+changes while the migration branch translated and validated models against the
+lakehouse target.
 
-See [examples/migration_tracker.sql](examples/migration_tracker.sql).
+The key controls were:
 
-### 2. dbt SQL translation layer
+- scheduled branch refresh from `main`,
+- conflict notifications when source and migration edits diverged,
+- merge request branch freshness checks,
+- compile and parse checks on changed SQL,
+- config-key checks for adapter-specific drift,
+- dependency checks to preserve dbt layering rules.
 
-The translation layer standardizes Redshift-specific SQL and dbt config into
-Trino-compatible patterns. The point is not simple find-and-replace. The safer
-pattern is:
+See [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/).
 
-- render dbt/Jinja first,
-- normalize unsupported Redshift config,
-- route table references through a migration-aware template,
-- parse rendered SQL with a SQL AST parser,
-- fail CI when the translated model cannot compile or parse.
+## Cutover Readiness
 
-See [examples/dbt_sql_translation.md](examples/dbt_sql_translation.md).
+Readiness was treated as evidence, not confidence. The control plane compared
+source and target objects before downstream consumers moved:
 
-### 3. GitLab transition branch management
+- object existence,
+- column existence,
+- data type compatibility,
+- row-count parity,
+- business metric parity,
+- missing-column risk based on non-null values,
+- known-system-column exclusions.
 
-A long-running transition branch lets the team convert models while `main`
-continues to receive normal business changes. Scheduled refresh keeps the
-transition branch close to the main branch and surfaces conflicts early.
+The local focus of this repository is the tracker and migration factory. The
+standalone parity validation script was moved out to the Iceberg notes repo.
 
-See [examples/transition_branch_refresh.py](examples/transition_branch_refresh.py)
-and [examples/gitlab-ci.transition-branch-refresh.yml](examples/gitlab-ci.transition-branch-refresh.yml).
+## Operational Follow-Through
 
-### 4. Parity validation
+After objects landed in Iceberg, the platform still needed maintenance and
+observability:
 
-The validation layer compares source and target objects before cutover:
+- collect table statistics for Trino planning,
+- monitor query usage and table access,
+- identify stale or unused objects,
+- run Iceberg maintenance such as snapshot expiration and file compaction,
+- validate runtime behavior through orchestrated jobs.
 
-- source object exists in target catalog,
-- schemas and columns match,
-- compatible data types are normalized,
-- row counts match within tolerance,
-- curated business metrics match within tolerance,
-- missing columns are risk-scored based on non-null data presence.
-
-See [examples/parity_validation.py](examples/parity_validation.py).
-
-## Presentation Companion
-
-The slide deck tells the executive story. The missing technical depth belongs in
-a technical appendix:
-
-- migration control plane,
-- GitLab branch strategy,
-- dbt template translation engine,
-- CI quality gates,
-- parity validation,
-- operational cutover and rollback.
-
-See [docs/presentation-addendum.md](docs/presentation-addendum.md).
+This turned the migration from a one-time movement of data into a durable
+lakehouse operating model.

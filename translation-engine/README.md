@@ -7,6 +7,13 @@ The notebook is intentionally preserved as the exploratory artifact. The table
 below captures the rule matrix that should eventually be extracted into a
 cleaner script or YAML-driven translation layer.
 
+## Files
+
+- [dbt_sql_translation.md](dbt_sql_translation.md) - implementation pattern for
+  dbt config cleanup, source routing, SQL translation, and CI validation.
+- [dbt_jinja_processor.ipynb](dbt_jinja_processor.ipynb) - exploratory notebook
+  prototype for deterministic dbt/Jinja cleanup.
+
 ## What the Processor Was Trying To Do
 
 - Preserve dbt/Jinja constructs like `ref`, `source`, `var`, and `dbt_utils`
@@ -85,13 +92,12 @@ case-insensitive regular expressions.
 The notebook should eventually become a small, public-safe script:
 
 ```text
-dbt_translation_engine/
+translation-engine/
   README.md
   dbt_jinja_processor.py
   redshift_to_trino_rules.yml
-  examples/
-    before.sql
-    after.sql
+  before.sql
+  after.sql
 ```
 
 That would make the deterministic translation story easier to inspect without

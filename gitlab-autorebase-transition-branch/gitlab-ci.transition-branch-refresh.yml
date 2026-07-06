@@ -20,7 +20,7 @@ refresh-transition-branch:
     - apt-get update && apt-get install -y git
     - pip install requests
   script:
-    - python examples/transition_branch_refresh.py
+    - python gitlab-autorebase-transition-branch/transition_branch_refresh.py
   rules:
     - if: '$CI_PIPELINE_SOURCE == "schedule" && $RUN_TRANSITION_BRANCH_REFRESH == "true"'
   variables:
