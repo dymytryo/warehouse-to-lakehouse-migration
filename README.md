@@ -13,14 +13,12 @@ data. The hard part was keeping thousands of modeled objects, downstream
 dependencies, and business metrics stable while the platform changed underneath
 them.
 
-The migration system had four parts:
+The migration system had three parts:
 
 1. A control plane that tracked which objects had moved.
 2. A dbt translation layer that converted Redshift-oriented code to
    Trino/Iceberg-compatible code.
 3. GitLab branch and CI controls that caught migration problems before merge.
-4. Cutover readiness checks that proved source and target objects were safe to
-   swap before consumers moved.
 
 ## Impact
 
@@ -30,7 +28,7 @@ The migration system had four parts:
 - Used a hot-swap cutover so existing BI, analytics, and downstream jobs did not
   need repeated repointing.
 - Built shift-left controls so translation, branch freshness, dependency, and
-  readiness issues were caught before production users depended on the new
+  validation issues were caught before production users depended on the new
   lakehouse objects.
 - Reduced platform cost by roughly 60% while keeping existing workflows stable.
 
@@ -41,54 +39,27 @@ The migration system had four parts:
 | [translation-engine](translation-engine/) | Redshift-to-Trino rules, dbt/Jinja cleanup process, and standalone processor script |
 | [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/) | Scheduled transition-branch refresh, GitLab CI job, and shift-left flow |
 | [tableau-migration-tracker](tableau-migration-tracker/) | Migration tracker screenshot and dbt SQL model for object status |
-| [lakehouse-architecture](lakehouse-architecture/) | Mermaid architecture flow for the warehouse-to-lakehouse migration |
 
 ## Target Architecture
 
 ```mermaid
-flowchart TB
-    subgraph Source["Source warehouse"]
-        RS[Redshift schemas and dbt models]
-        RSQ[Historical query patterns]
-    end
+flowchart LR
+    A[Redshift warehouse] --> B[Source object inventory]
+    B --> C[Migration mapping]
+    C --> D[dbt translation layer]
+    D --> E[GitLab transition branch]
+    E --> F[CI validation gates]
+    F --> G[dbt build on Trino]
+    G --> H[Apache Iceberg tables]
+    H --> I[Trino / Starburst]
+    I --> J[BI, analytics, AI, and jobs]
 
-    subgraph Migration["Migration control plane"]
-        INV[Object inventory]
-        MAP[Schema and table mapping]
-        TRANS[dbt SQL translation]
-        BRANCH[Transition branch]
-        CI[GitLab CI quality gates]
-        READY[Cutover readiness]
-    end
-
-    subgraph Lakehouse["Target lakehouse"]
-        S3[Object storage]
-        ICE[Apache Iceberg tables]
-        CAT[Catalog / metadata]
-        TRINO[Trino / Starburst]
-    end
-
-    subgraph Consumers["Consumers"]
-        BI[BI dashboards]
-        JOBS[Batch jobs]
-        AI[AI and semantic access]
-    end
-
-    RS --> INV
-    RSQ --> INV
-    INV --> MAP
-    MAP --> TRANS
-    TRANS --> BRANCH
-    BRANCH --> CI
-    CI --> ICE
-    S3 --> ICE
-    CAT --> ICE
-    ICE --> TRINO
-    TRINO --> BI
-    TRINO --> JOBS
-    TRINO --> AI
-    CI --> READY
-    READY --> TRINO
+    F --> K[Schema parity]
+    F --> L[Row-count parity]
+    F --> M[Metric parity]
+    K --> N[Cutover readiness]
+    L --> N
+    M --> N
 ```
 
 ## Migration Control Plane
@@ -150,32 +121,3 @@ The key controls were:
 - dependency checks to preserve dbt layering rules.
 
 See [gitlab-autorebase-transition-branch](gitlab-autorebase-transition-branch/).
-
-## Cutover Readiness
-
-Readiness was treated as evidence, not confidence. The control plane compared
-source and target objects before downstream consumers moved:
-
-- object existence,
-- column existence,
-- data type compatibility,
-- row-count parity,
-- business metric parity,
-- missing-column risk based on non-null values,
-- known-system-column exclusions.
-
-The readiness results fed the migration tracker and cutover decision process.
-
-## Operational Follow-Through
-
-After objects landed in Iceberg, the platform still needed maintenance and
-observability:
-
-- collect table statistics for Trino planning,
-- monitor query usage and table access,
-- identify stale or unused objects,
-- run Iceberg maintenance such as snapshot expiration and file compaction,
-- validate runtime behavior through orchestrated jobs.
-
-This turned the migration from a one-time movement of data into a durable
-lakehouse operating model.
