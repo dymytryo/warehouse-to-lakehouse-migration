@@ -43,23 +43,49 @@ The migration system had three parts:
 ## Target Architecture
 
 ```mermaid
-flowchart LR
-    A[Redshift warehouse] --> B[Source object inventory]
-    B --> C[Migration mapping]
-    C --> D[dbt translation layer]
-    D --> E[GitLab transition branch]
-    E --> F[CI validation gates]
-    F --> G[dbt build on Trino]
-    G --> H[Apache Iceberg tables]
-    H --> I[Trino / Starburst]
-    I --> J[BI, analytics, AI, and jobs]
+flowchart TB
+    subgraph Source["Source warehouse"]
+        RS[Redshift schemas and dbt models]
+        RSQ[Historical query patterns]
+    end
 
-    F --> K[Schema parity]
-    F --> L[Row-count parity]
-    F --> M[Metric parity]
-    K --> N[Cutover readiness]
-    L --> N
-    M --> N
+    subgraph Migration["Migration control plane"]
+        INV[Object inventory]
+        MAP[Schema and table mapping]
+        TRANS[dbt SQL translation]
+        BRANCH[Transition branch]
+        CI[GitLab CI quality gates]
+        READY[Cutover readiness]
+    end
+
+    subgraph Lakehouse["Target lakehouse"]
+        S3[Object storage]
+        ICE[Apache Iceberg tables]
+        CAT[Catalog / metadata]
+        TRINO[Trino / Starburst]
+    end
+
+    subgraph Consumers["Consumers"]
+        BI[BI dashboards]
+        JOBS[Batch jobs]
+        AI[AI and semantic access]
+    end
+
+    RS --> INV
+    RSQ --> INV
+    INV --> MAP
+    MAP --> TRANS
+    TRANS --> BRANCH
+    BRANCH --> CI
+    CI --> ICE
+    S3 --> ICE
+    CAT --> ICE
+    ICE --> TRINO
+    TRINO --> BI
+    TRINO --> JOBS
+    TRINO --> AI
+    CI --> READY
+    READY --> TRINO
 ```
 
 ## Migration Tracker
